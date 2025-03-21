@@ -32,7 +32,7 @@ public class FindMatchActivity extends AppCompatActivity {
         getSupportActionBar().setTitle(R.string.title_find_match);
 
 
-        float target = getIntent().getFloatExtra(TARGET_MATCH_VALUE, 10000f);
+        float target = getIntent().getFloatExtra(TARGET_MATCH_VALUE, 250f);
         matchText.setText(getString(R.string.select_matches, (int) target));
         // Initial remaining number
         remainingTotal = target;
@@ -42,6 +42,7 @@ public class FindMatchActivity extends AppCompatActivity {
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         List<MatchItem> items = buildMockData();
+
         // Register the subscribe to handle the item check event and update with the latest result
         final MatchAdapter adapter = new MatchAdapter(items, (item, isChecked) -> {
             if (isChecked) {
@@ -54,6 +55,9 @@ public class FindMatchActivity extends AppCompatActivity {
         });
 
         recyclerView.setAdapter(adapter);
+
+        // Auto select the single matching item after boot up
+        autoSelectMatchingItem(items, adapter);
     }
 
     /**
@@ -61,6 +65,21 @@ public class FindMatchActivity extends AppCompatActivity {
      */
     private void updateMatchText(){
         matchText.setText(getString(R.string.select_matches, (int) remainingTotal));
+    }
+
+    /**
+     * Function that loop all the MatchItems, searching one matching reaming total item if exist
+     * @param items
+     * @param adapter
+     */
+    private void autoSelectMatchingItem(List<MatchItem> items, MatchAdapter adapter) {
+        for (int i = 0; i < items.size(); i++) {
+            MatchItem item = items.get(i);
+            if (item.getTotal() == remainingTotal) {
+                adapter.setChecked(i, true);
+                break;
+            }
+        }
     }
 
     private List<MatchItem> buildMockData() {

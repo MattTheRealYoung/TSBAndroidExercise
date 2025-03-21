@@ -7,7 +7,9 @@ import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 public class MatchAdapter extends RecyclerView.Adapter<MatchAdapter.ViewHolder> {
 
@@ -34,12 +36,18 @@ public class MatchAdapter extends RecyclerView.Adapter<MatchAdapter.ViewHolder> 
          * @param matchItem
          * @param listener
          * @param position
+         * @param checkedPositions
          */
-        public void bind(MatchItem matchItem, OnItemCheckedListener listener, int position) {
+        public void bind(MatchItem matchItem, OnItemCheckedListener listener, int position,
+                         Set<Integer> checkedPositions) {
             mainText.setText(matchItem.getPaidTo());
             total.setText(Float.toString(matchItem.getTotal()));
             subtextLeft.setText(matchItem.getTransactionDate());
             subtextRight.setText(matchItem.getDocType());
+
+            // Set the checkbox based on stored checked positions
+            checkedListItem.setChecked(checkedPositions.contains(position));
+
             // Handle click event to toggle checkbox
             checkedListItem.setOnClickListener(v -> {
                 boolean isChecked = !checkedListItem.isChecked();
@@ -55,6 +63,10 @@ public class MatchAdapter extends RecyclerView.Adapter<MatchAdapter.ViewHolder> 
      * OnItemCheckedListener, listen the check behavior when user checked the MatchItem
      */
     private OnItemCheckedListener listener;
+    /**
+     * Create a HashSet to store the checked items
+     */
+    private Set<Integer> checkedPositions = new HashSet<>();
 
     /**
      * provide an interface to handle onItemChecked event
@@ -78,12 +90,29 @@ public class MatchAdapter extends RecyclerView.Adapter<MatchAdapter.ViewHolder> 
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         MatchItem matchItem = matchItems.get(position);
-        holder.bind(matchItem, listener, position);
+        holder.bind(matchItem, listener, position, checkedPositions);
     }
 
     @Override
     public int getItemCount() {
         return matchItems.size();
+    }
+
+    /**
+     * Function allow us to manually set the checked item
+     * @param position
+     * @param isChecked
+     */
+    public void setChecked(int position, boolean isChecked) {
+        if (isChecked) {
+            checkedPositions.add(position);
+        } else {
+            checkedPositions.remove(position);
+        }
+        // Update item list state
+        notifyItemChanged(position);
+        // Notify subscribers
+        listener.onItemChecked(matchItems.get(position), isChecked);
     }
 
 }
