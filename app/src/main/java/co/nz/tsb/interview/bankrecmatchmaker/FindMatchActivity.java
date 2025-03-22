@@ -9,6 +9,7 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 public class FindMatchActivity extends AppCompatActivity {
@@ -17,47 +18,86 @@ public class FindMatchActivity extends AppCompatActivity {
     // Record the remaining total number
     private float remainingTotal;
     private TextView matchText;
+    private MatchAdapter adapter;
+    private List<MatchItem> items;
+    // Record the check states of all the match items
+    private List<Boolean> checkedStates;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_find_match);
 
-        Toolbar toolbar = findViewById(R.id.toolbar);
-        matchText = findViewById(R.id.match_text);
-        RecyclerView recyclerView = findViewById(R.id.recycler_view);
+        // UI initialize
+        initializeUI();
+        initializeRecyclerView();
 
-        setSupportActionBar(toolbar);
-        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
-        getSupportActionBar().setTitle(R.string.title_find_match);
-
-
-        float target = getIntent().getFloatExtra(TARGET_MATCH_VALUE, 250f);
+        // Update the target matching value
+        float target = getIntent().getFloatExtra(TARGET_MATCH_VALUE, 390f);
         matchText.setText(getString(R.string.select_matches, (int) target));
         // Initial remaining number
         remainingTotal = target;
         // Update match text
         updateMatchText();
 
+        // Auto-selecting matching item or items after initialization
+        initialMatching(remainingTotal);
+    }
+
+    /**
+     * UI initialization of toolbar, target text
+     */
+    private void initializeUI() {
+        Toolbar toolbar = findViewById(R.id.toolbar);
+        matchText = findViewById(R.id.match_text);
+
+        setSupportActionBar(toolbar);
+        getSupportActionBar().setDisplayHomeAsUpEnabled(true);
+        getSupportActionBar().setTitle(R.string.title_find_match);
+    }
+
+    /**
+     * Initialize the recyclerview and integrate the mock data
+     */
+    private void initializeRecyclerView() {
+        RecyclerView recyclerView = findViewById(R.id.recycler_view);
         recyclerView.setHasFixedSize(true);
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
-        List<MatchItem> items = buildMockData();
-
-        // Register the subscribe to handle the item check event and update with the latest result
-        final MatchAdapter adapter = new MatchAdapter(items, (item, isChecked) -> {
-            if (isChecked) {
-                remainingTotal -= item.getTotal();
-            } else {
-                remainingTotal += item.getTotal();
-            }
-            // Update the UI
-            updateMatchText();
-        });
-
+        items = buildMockData();
+        checkedStates = new ArrayList<>(Collections.nCopies(items.size(), false));
+        adapter = new MatchAdapter(items, checkedStates, this::OnItemChecked);
         recyclerView.setAdapter(adapter);
+    }
 
-        // Auto select the single matching item after boot up
-        autoSelectMatchingItem(items, adapter);
+    /**
+     * Auto-select the item or items sum that equals to target value
+     * @param target
+     */
+    private void initialMatching(float target) {
+        MatchFinder finder = new MatchFinder();
+        MatchFinder.MatchResult result = finder.findInitialMatches(items, target);
+        for (int index: result.matchedIndexes) {
+            checkedStates.set(index, true);
+            adapter.updateCheckedState(index, true);
+        }
+        remainingTotal = result.remainingTotal;
+        updateMatchText();
+    }
+
+    /**
+     * On item checked listener that handle checking logic
+     * @param position
+     * @param isChecked
+     */
+    private void OnItemChecked(int position, boolean isChecked) {
+        float itemTotal = items.get(position).getTotal();
+        if (isChecked) {
+            remainingTotal -= itemTotal;
+        } else {
+            remainingTotal += itemTotal;
+        }
+        adapter.updateCheckedState(position, isChecked);
+        updateMatchText();
     }
 
     /**
@@ -65,21 +105,6 @@ public class FindMatchActivity extends AppCompatActivity {
      */
     private void updateMatchText(){
         matchText.setText(getString(R.string.select_matches, (int) remainingTotal));
-    }
-
-    /**
-     * Function that loop all the MatchItems, searching one matching reaming total item if exist
-     * @param items
-     * @param adapter
-     */
-    private void autoSelectMatchingItem(List<MatchItem> items, MatchAdapter adapter) {
-        for (int i = 0; i < items.size(); i++) {
-            MatchItem item = items.get(i);
-            if (item.getTotal() == remainingTotal) {
-                adapter.setChecked(i, true);
-                break;
-            }
-        }
     }
 
     private List<MatchItem> buildMockData() {

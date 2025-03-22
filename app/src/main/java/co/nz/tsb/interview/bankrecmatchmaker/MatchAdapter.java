@@ -7,9 +7,7 @@ import android.widget.TextView;
 
 import androidx.recyclerview.widget.RecyclerView;
 
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 public class MatchAdapter extends RecyclerView.Adapter<MatchAdapter.ViewHolder> {
 
@@ -31,52 +29,50 @@ public class MatchAdapter extends RecyclerView.Adapter<MatchAdapter.ViewHolder> 
         }
 
         /**
-         * We should pass in the item check listener and position to bind with the view, once user
-         * checked the MatchItem, subscribers will get the update
+         * Bind the item check listener and check status to the view, once user
+         * toggle the MatchItem, subscribers will get the update
+         *
          * @param matchItem
+         * @param isChecked
          * @param listener
-         * @param position
-         * @param checkedPositions
          */
-        public void bind(MatchItem matchItem, OnItemCheckedListener listener, int position,
-                         Set<Integer> checkedPositions) {
+        public void bind(MatchItem matchItem, boolean isChecked, OnItemCheckedListener listener) {
             mainText.setText(matchItem.getPaidTo());
             total.setText(Float.toString(matchItem.getTotal()));
             subtextLeft.setText(matchItem.getTransactionDate());
             subtextRight.setText(matchItem.getDocType());
 
-            // Set the checkbox based on stored checked positions
-            checkedListItem.setChecked(checkedPositions.contains(position));
+            // Set the checkbox based on stored checked states
+            checkedListItem.setChecked(isChecked);
 
             // Handle click event to toggle checkbox
-            checkedListItem.setOnClickListener(v -> {
-                boolean isChecked = !checkedListItem.isChecked();
-                checkedListItem.setChecked(isChecked);
-                //notify subscribers
-                listener.onItemChecked(matchItem, isChecked);
-            });
+            checkedListItem.setOnClickListener(v ->
+                    //notify subscribers
+                    listener.onItemChecked(getAdapterPosition(), !isChecked)
+            );
         }
     }
 
-    private List<MatchItem> matchItems;
+    private final List<MatchItem> matchItems;
     /**
      * OnItemCheckedListener, listen the check behavior when user checked the MatchItem
      */
-    private OnItemCheckedListener listener;
+    private final OnItemCheckedListener listener;
     /**
-     * Create a HashSet to store the checked items
+     * Create a List to store the checked states
      */
-    private Set<Integer> checkedPositions = new HashSet<>();
+    private final List<Boolean> checkedStates;
 
     /**
-     * provide an interface to handle onItemChecked event
+     * provide an interface to handle onItemChecked
      */
     public interface OnItemCheckedListener {
-        void onItemChecked(MatchItem item, boolean isChecked);
+        void onItemChecked(int position, boolean isChecked);
     }
 
-    public MatchAdapter(List<MatchItem> matchItems, OnItemCheckedListener listener) {
+    public MatchAdapter(List<MatchItem> matchItems, List<Boolean> checkedStates, OnItemCheckedListener listener) {
         this.matchItems = matchItems;
+        this.checkedStates = checkedStates;
         this.listener = listener;
     }
 
@@ -90,7 +86,7 @@ public class MatchAdapter extends RecyclerView.Adapter<MatchAdapter.ViewHolder> 
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         MatchItem matchItem = matchItems.get(position);
-        holder.bind(matchItem, listener, position, checkedPositions);
+        holder.bind(matchItem, checkedStates.get(position), listener);
     }
 
     @Override
@@ -99,20 +95,13 @@ public class MatchAdapter extends RecyclerView.Adapter<MatchAdapter.ViewHolder> 
     }
 
     /**
-     * Function allow us to manually set the checked item
+     * Provide a function to update the check state and re-render the UI
      * @param position
      * @param isChecked
      */
-    public void setChecked(int position, boolean isChecked) {
-        if (isChecked) {
-            checkedPositions.add(position);
-        } else {
-            checkedPositions.remove(position);
-        }
-        // Update item list state
+    public void updateCheckedState(int position, boolean isChecked) {
+        checkedStates.set(position, isChecked);
         notifyItemChanged(position);
-        // Notify subscribers
-        listener.onItemChecked(matchItems.get(position), isChecked);
     }
 
 }
